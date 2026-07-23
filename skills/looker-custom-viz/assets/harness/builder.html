@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Looker Custom Viz Builder (Local)</title>
+    <meta charset="utf-8">
+    <style>
+        body,
+        html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Open Sans', sans-serif;
+            overflow: hidden;
+        }
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        header {
+            background: #fff;
+            border-bottom: 1px solid #ddd;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 50px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+
+        #run-btn {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #run-btn:hover {
+            background: #1557b0;
+        }
+
+        #main {
+            display: flex;
+            flex: 1;
+            height: calc(100% - 71px);
+        }
+
+        #editors {
+            width: 40%;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #ddd;
+            transition: width 0.3s ease, min-width 0.3s ease;
+            position: relative;
+        }
+
+        #editors.collapsed {
+            width: 0;
+            min-width: 0;
+            overflow: hidden;
+            border-right: none;
+        }
+
+        #toggle-sidebar {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 40px;
+            background: #ddd;
+            border: 1px solid #ccc;
+            border-left: none;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        #toggle-sidebar:hover {
+            background: #ccc;
+        }
+
+        #preview {
+            flex: 1;
+            padding: 20px;
+            background: #f8f9fa;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .tabs {
+            display: flex;
+            background: #eee;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            color: #555;
+            font-size: 14px;
+            border-right: 1px solid #ddd;
+        }
+
+        .tab.active {
+            background: #fff;
+            color: #1a73e8;
+            font-weight: bold;
+            border-bottom: 1px solid #fff;
+            margin-bottom: -1px;
+        }
+
+        .editor-container {
+            flex: 1;
+            position: relative;
+            display: none;
+        }
+
+        .editor-container.active {
+            display: block;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100%;
+            border: none;
+            resize: none;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        #vis-container {
+            background: white;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            min-height: 400px;
+            position: relative;
+        }
+
+        /* Settings Panel */
+        #settings-panel {
+            width: 300px;
+            background: #262d33;
+            color: white;
+            border-left: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        #settings-panel.collapsed {
+            width: 0;
+            overflow: hidden;
+            border-left: none;
+        }
+
+        .settings-header {
+            padding: 15px;
+            background: #1f252a;
+            border-bottom: 1px solid #444;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .settings-content {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .toggle-label {
+            font-size: 14px;
+        }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #1a73e8;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
+        }
+
+        #toggle-settings {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 40px;
+            background: #ddd;
+            border: 1px solid #ccc;
+            border-right: none;
+            border-radius: 4px 0 0 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        #toggle-settings:hover {
+            background: #ccc;
+        }
+
+        #error-overlay {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #d32f2f;
+            color: white;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <header>
+            <h1>Looker Custom Viz Builder</h1>
+            <div>
+                <button id="run-btn">RUN</button>
+            </div>
+        </header>
+        <div id="main">
+            <div id="editors">
+                <div class="tabs">
+                    <div class="tab active" data-target="config">Config (Layout)</div>
+                    <div class="tab" data-target="data">Raw Data</div>
+                    <div class="tab" data-target="query">Query Response</div>
+                </div>
+                <div id="config" class="editor-container active">
+                    <textarea id="config-area" spellcheck="false"></textarea>
+                </div>
+                <div id="data" class="editor-container">
+                    <textarea id="data-area" spellcheck="false"></textarea>
+                </div>
+                <div id="query" class="editor-container">
+                    <textarea id="query-area" spellcheck="false"></textarea>
+                </div>
+            </div>
+            <div id="preview">
+                <div id="toggle-sidebar" title="Toggle Sidebar">‹</div>
+                <h3>Rendered Visualization</h3>
+                <div id="vis-container"></div>
+            </div>
+            <div id="settings-panel">
+                <div class="settings-header">
+                    <span>Configuration</span>
+                </div>
+                <div class="settings-content" id="settings-content">
+                    <!-- Dynamic content generated by JS -->
+                </div>
+            </div>
+            <div id="toggle-settings" title="Toggle Settings">›</div>
+        </div>
+    </div>
+    <div id="error-overlay"></div>
+
+    <script src="mocks.js"></script>
+    <script src="data_scenarios.js"></script>
+    <!-- Try to load both/either, usually we only have one build artifact. 
+         Adjust this path if the dist file name is different. -->
+    <script src="../dist/bundle.js"></script>
+
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(t => {
+            t.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+                document.querySelectorAll('.editor-container').forEach(x => x.classList.remove('active'));
+                t.classList.add('active');
+                document.getElementById(t.dataset.target).classList.add('active');
+            });
+        });
+
+        const configArea = document.getElementById('config-area');
+        const dataArea = document.getElementById('data-area');
+        const queryArea = document.getElementById('query-area');
+        const visContainer = document.getElementById('vis-container');
+        const errorOverlay = document.getElementById('error-overlay');
+
+        // Initial Load
+        const initialScenario = (window.scenarios && window.scenarios.user_request) ||
+            (window.scenarios && window.scenarios.simple) || {};
+
+        configArea.value = JSON.stringify(initialScenario.config || {}, null, 2);
+        dataArea.value = JSON.stringify(initialScenario.data || [], null, 2);
+        queryArea.value = JSON.stringify(initialScenario.queryResponse || {}, null, 2);
+
+        function showError(msg) {
+            errorOverlay.textContent = msg;
+            errorOverlay.style.display = 'block';
+            setTimeout(() => errorOverlay.style.display = 'none', 5000);
+        }
+
+        function run() {
+            try {
+                const config = JSON.parse(configArea.value);
+                const data = JSON.parse(dataArea.value);
+                const queryResponse = JSON.parse(queryArea.value);
+
+                visContainer.innerHTML = '';
+
+                // Find registered viz
+                // Assuming 'mocks.js' sets up 'looker.plugins.visualizations'
+                // We pick the last registered one or specific one
+                const vizIds = Object.keys(looker.plugins.visualizations);
+                if (vizIds.length === 0) {
+                    throw new Error("No visualizations registered. Check if JS is loaded and mocks.js is correct.");
+                }
+                // Prefer 'custom_pivot' or 'kpi_canvas' if available, else last
+                let vizId = vizIds.find(id => id === 'custom_pivot' || id === 'kpi_canvas') || vizIds[vizIds.length - 1];
+                const viz = looker.plugins.visualizations[vizId];
+
+                console.log("Creating viz:", vizId);
+
+                // Mock addError/clearErrors if not present (handled in mocks.js usually)
+
+                viz.create(visContainer, config, {
+                    looker: window.looker
+                }, {
+                    escape: x => x // Mock utils
+                });
+
+                viz.updateAsync(data, visContainer, config, queryResponse, {
+                    crossfilterEnabled: false
+                }, () => {
+                    console.log("Render finished");
+                });
+
+            } catch (e) {
+                console.error(e);
+                showError(e.message);
+            }
+        }
+
+        document.getElementById('run-btn').addEventListener('click', () => run());
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            // Small delay to ensure scripts loaded
+            setTimeout(run, 100);
+        });
+
+        const toggleBtn = document.getElementById('toggle-sidebar');
+        const editors = document.getElementById('editors');
+        let isCollapsed = false;
+
+        toggleBtn.addEventListener('click', () => {
+            isCollapsed = !isCollapsed;
+            if (isCollapsed) {
+                editors.classList.add('collapsed');
+                toggleBtn.innerText = '›';
+            } else {
+                editors.classList.remove('collapsed');
+                toggleBtn.innerText = '‹';
+            }
+            // Trigger resize for viz if needed
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 300);
+        });
+
+        const toggleSettingsBtn = document.getElementById('toggle-settings');
+        const settingsPanel = document.getElementById('settings-panel');
+        let isSettingsCollapsed = false;
+
+        toggleSettingsBtn.addEventListener('click', () => {
+            isSettingsCollapsed = !isSettingsCollapsed;
+            if (isSettingsCollapsed) {
+                settingsPanel.classList.add('collapsed');
+                toggleSettingsBtn.innerText = '‹';
+            } else {
+                settingsPanel.classList.remove('collapsed');
+                toggleSettingsBtn.innerText = '›';
+            }
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
+        });
+
+
+        let currentSettingsRendered = false;
+
+        function renderSettings(viz) {
+            if (currentSettingsRendered) return;
+
+            const container = document.getElementById('settings-content');
+            container.innerHTML = '';
+
+            if (!viz.options) return;
+
+            Object.entries(viz.options).forEach(([key, opt]) => {
+                // Skip hidden or system options if desired, or just render all valid types
+                if (opt.display === 'hidden' || opt.section === 'System') return;
+
+                if (opt.type === 'boolean') {
+                    const row = document.createElement('div');
+                    row.className = 'toggle-row';
+                    row.innerHTML = `
+                        <span class="toggle-label">${opt.label || key}</span>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-${key}">
+                            <span class="slider"></span>
+                        </label>
+                    `;
+                    container.appendChild(row);
+
+                    // Bind event
+                    const input = row.querySelector('input');
+                    input.addEventListener('change', () => {
+                        try {
+                            const currentConfig = JSON.parse(configArea.value || '{}');
+                            currentConfig[key] = input.checked;
+                            configArea.value = JSON.stringify(currentConfig, null, 2);
+                            run();
+                        } catch (e) {
+                            console.error("Failed to update config", e);
+                        }
+                    });
+                }
+            });
+            currentSettingsRendered = true;
+        }
+
+        // Hook into run() to sync settings
+        const originalRun = run;
+        run = function () {
+            // We need to find the viz first to get options, which originalRun does...
+            // But originalRun also calls create/update.
+            // Let's modify the flow slightly. We can grab the viz before calling originalRun logic.
+
+            try {
+                const vizIds = Object.keys(looker.plugins.visualizations);
+                if (vizIds.length > 0) {
+                    let vizId = vizIds.find(id => id === 'custom_pivot' || id === 'kpi_canvas') || vizIds[vizIds.length - 1];
+                    const viz = looker.plugins.visualizations[vizId];
+                    renderSettings(viz);
+
+                    // Sync UI from Config
+                    const config = JSON.parse(configArea.value || '{}');
+                    Object.keys(viz.options || {}).forEach(key => {
+                        const el = document.getElementById(`opt-${key}`);
+                        if (el && el.type === 'checkbox') {
+                            el.checked = !!config[key];
+                        }
+                    });
+                }
+            } catch (e) { console.error("Settings sync error", e); }
+
+            originalRun();
+        }
+
+
+
+    </script>
+</body>
+
+</html>
