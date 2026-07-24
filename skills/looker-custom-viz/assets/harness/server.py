@@ -5,8 +5,14 @@ import urllib.parse
 import subprocess
 import shutil
 from http.server import SimpleHTTPRequestHandler, HTTPServer
+import socketserver
 
 PORT = 45873
+
+
+class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+
 
 # Find paths relative to this script
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -15,6 +21,15 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class HarnessHTTPRequestHandler(SimpleHTTPRequestHandler):
+    def translate_path(self, path):
+        parsed_url = urllib.parse.urlparse(path)
+        req_path = parsed_url.path
+        harness_prefix = '/skills/looker-custom-viz/assets/harness/'
+        if req_path.startswith(harness_prefix):
+            relative_file = req_path[len(harness_prefix):]
+            return os.path.join(SCRIPT_DIR, relative_file)
+        return super().translate_path(path)
+
     def end_headers(self):
         # Allow CORS for development
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -30,11 +45,34 @@ class HarnessHTTPRequestHandler(SimpleHTTPRequestHandler):
         parsed_url = urllib.parse.urlparse(self.path)
         if parsed_url.path in ['/', '/builder.html', '/harness']:
             self.send_response(302)
-            self.send_header(
-                'Location',
-                '/skills/looker-custom-viz/assets/harness/builder.html'
-            )
+            location = '/skills/looker-custom-viz/assets/harness/builder.html'
+            if parsed_url.query:
+                location += '?' + parsed_url.query
+            self.send_header('Location', location)
             self.end_headers()
+            return
+
+        if parsed_url.path == '/api/color-collections':
+            try:
+                cli_path = shutil.which('looker-cli')
+                if not cli_path:
+                    self.send_error_json(
+                        500,
+                        "looker-cli not found in PATH."
+                    )
+                    return
+                collections = self.run_cli([
+                    cli_path, 'api', 'colorcollection',
+                    'all_color_collections'
+                ])
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(collections).encode('utf-8'))
+            except Exception as e:
+                self.send_error_json(
+                    500, f"Failed to fetch color collections: {str(e)}"
+                )
             return
 
         if parsed_url.path == '/api/fetch-explore':
@@ -133,9 +171,18 @@ class HarnessHTTPRequestHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def run_cli(self, cmd):
-        result = subprocess.run(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )
+        try:
+            result = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=10,
+            )
+        except subprocess.TimeoutExpired:
+            raise Exception(
+                f"Command {' '.join(cmd)} timed out after 10 seconds"
+            )
         if result.returncode != 0:
             raise Exception(
                 f"Command {' '.join(cmd)} failed: {result.stderr.strip()}"
@@ -191,7 +238,7 @@ class HarnessHTTPRequestHandler(SimpleHTTPRequestHandler):
 
 def run(port=PORT):
     server_address = ('', port)
-    httpd = HTTPServer(server_address, HarnessHTTPRequestHandler)
+    httpd = ThreadingHTTPServer(server_address, HarnessHTTPRequestHandler)
     print(
         f"Harness development proxy server running on "
         f"http://localhost:{port}..."

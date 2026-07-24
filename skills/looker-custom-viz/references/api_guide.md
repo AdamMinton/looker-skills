@@ -201,3 +201,78 @@ updateAsync: function(data, element, config, queryResponse, details, done) {
 }
 ```
 
+
+---
+
+## 5. Loading Dependencies & Harness Compatibility
+
+When your custom visualization requires external libraries (like D3, Rough.js, or React), you must handle loading them in a way that works in Looker's production environment (complying with CSP) and your local offline development harness.
+
+### Step 1: Declare Dependencies in `manifest.lkml` (For Production)
+Declare all external library URLs in the `dependencies` array of the `visualization` block. Looker will load these libraries natively in the sandbox before executing your visualization script.
+
+```lkml
+visualization: {
+  id: "my_custom_viz"
+  label: "My Custom Chart"
+  file: "my_viz.js"
+  dependencies: [
+    "https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js",
+    "https://cdn.jsdelivr.net/npm/roughjs@4.6.6/bundled/rough.js"
+  ]
+}
+```
+
+### Step 2: Implement Hybrid Loader in JS (For Harness Compatibility)
+Since the local harness does not parse `manifest.lkml`, you must write a script loader that falls back to dynamic loading when the libraries are not already globally defined. 
+
+Use this pattern at the start of your visualization file to define a hybrid loader:
+
+```javascript
+// Helper to load external scripts dynamically, checking if already loaded globally (via manifest)
+function loadScript(src, globalName) {
+  return new Promise((resolve, reject) => {
+    // 1. If library is already loaded globally (by Looker manifest), resolve immediately
+    if (globalName && window[globalName]) {
+      resolve();
+      return;
+    }
+    // 2. If script tag already exists in document, resolve
+    if (document.querySelector(`script[src="${src}"]`)) {
+      resolve();
+      return;
+    }
+    // 3. Otherwise (Local Harness mode), load the script dynamically
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+```
+
+Then, call this loader inside `updateAsync` before rendering:
+
+```javascript
+updateAsync: function(data, element, config, queryResponse, details, done) {
+  this.clearErrors();
+
+  // Load dependencies before rendering
+  Promise.all([
+    loadScript('https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js', 'd3'),
+    loadScript('https://cdn.jsdelivr.net/npm/roughjs@4.6.6/bundled/rough.js', 'rough')
+  ]).then(() => {
+    // Render chart once libraries are ready
+    this.renderChart(element);
+    if (done) done();
+  }).catch(err => {
+    this.addError({
+      group: "load_dependency",
+      title: "Dependency Error",
+      message: "Failed to load required libraries."
+    });
+    if (done) done();
+  });
+}
+```

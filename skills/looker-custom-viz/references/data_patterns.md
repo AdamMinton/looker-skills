@@ -194,3 +194,98 @@ updateAsync: function(data, element, config, queryResponse, details, done) {
   // ... Proceed with normal chart rendering ...
 }
 ```
+
+---
+
+## 7. Handling Hierarchical / Grouped Data (e.g. Sunburst, Treemaps)
+
+Many hierarchical visualizations (like ECharts Sunburst or Treemaps) require data structured as a nested tree rather than Looker's flat row array. You must write a helper to build this tree dynamically.
+
+### The Pattern
+1.  **Preserve Dimension Order**: Use the order of dimensions in `queryResponse.fields.dimensions` to define the levels of the hierarchy.
+2.  **Leaf Nodes**: Only assign values (and measure-specific drill links) to the leaf nodes.
+3.  **Parent Nodes**: Assign dimension-specific drill links to intermediate parent nodes so users can drill at any level of the hierarchy.
+
+```javascript
+function convertToHierarchy(data, dimensions, measureName) {
+  const root = [];
+
+  data.forEach(row => {
+    let currentLevel = root;
+
+    dimensions.forEach((dim, dimIdx) => {
+      const cell = row[dim.name];
+      const name = cell ? String(cell.value) : 'Null';
+      const dimLinks = cell ? cell.links : [];
+      
+      // Find if this node already exists at the current level
+      let node = currentLevel.find(n => n.name === name);
+
+      if (!node) {
+        node = { 
+          name: name,
+          links: dimLinks // Store dimension drills on parent nodes
+        };
+        currentLevel.push(node);
+      }
+
+      if (dimIdx === dimensions.length - 1) {
+        // Leaf node: set value and measure drills
+        const measCell = row[measureName];
+        node.value = measCell ? (Number(measCell.value) || 0) : 0;
+        // Fallback to dimension links if measure links are missing
+        node.links = (measCell && measCell.links && measCell.links.length > 0) ? measCell.links : dimLinks;
+        node.cell = measCell; // Store cell for custom tooltips
+      } else {
+        // Parent node: ensure children array exists and descend
+        if (!node.children) {
+          node.children = [];
+        }
+        currentLevel = node.children;
+      }
+    });
+  });
+
+  return root;
+}
+```
+
+---
+
+## 8. Value Formatting for Aggregated/Grouped Data
+
+When creating custom visualizations that aggregate or roll up data (like Sunbursts or Treemaps), you must format the calculated values yourself. Looker only sends pre-formatted `rendered` values for individual cells, not for your custom groups.
+
+### The Pattern
+1.  **Use `ssf` Library**: Load the standard `ssf` (SpreadSheet Format) library to apply Looker's LookML `value_format` string.
+2.  **Fallback to Rendered or Browser Default**: If `value_format` is missing, try to find an exact matching raw value in the dataset and use its pre-formatted `rendered` string. If that fails, fall back to the browser's native `toLocaleString()` (which adds standard thousands separators).
+
+```javascript
+// Helper to get a formatter based on measure metadata or fallback to default formatting
+function getFormatterForMeasure(data, measure, measureName) {
+  if (measure && measure.value_format && window.SSF) {
+    return function(value) {
+      try {
+        return SSF.format(measure.value_format, value);
+      } catch (e) {
+        console.warn("SSF formatting failed, falling back to local formatting", e);
+        return Number(value).toLocaleString();
+      }
+    };
+  }
+
+  // Fallback: If no format defined, try to find a matching rendered value,
+  // or use default browser formatting (which adds commas).
+  return function(value) {
+    if (value === null || value === undefined) return '';
+    const matchingRow = data.find(row => {
+      const cell = row[measureName];
+      return cell && cell.value === value;
+    });
+    if (matchingRow && matchingRow[measureName].rendered) {
+      return matchingRow[measureName].rendered;
+    }
+    return Number(value).toLocaleString();
+  };
+}
+```

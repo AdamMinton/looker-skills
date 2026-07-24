@@ -342,6 +342,28 @@ window.addEventListener('resize', debounce(run, 150));
 
 // ⚙️ Dynamic Settings Panel Generation inside Options Preview Tab
 
+function getHarnessPalettes() {
+    const defaultPalettes = [
+        {
+            label: "Shoreline (Default)",
+            colors: ['#1A73E8', '#12B5CB', '#E52592', '#E8710A', '#F9AB00', '#7CB342', '#9334E6', '#80868B']
+        },
+        {
+            label: "Classic Looker",
+            colors: ['#3eb0d5', '#b1399f', '#c2dd67', '#607d8b', '#e17f24', '#4285f4', '#f1ca3a', '#e52592']
+        }
+    ];
+
+    let palettes = [];
+    if (window.lookerColorCollections) {
+        const categorical = window.lookerColorCollections.categoricalPalettes || [];
+        categorical.forEach(p => {
+            palettes.push({ label: p.label, colors: p.colors });
+        });
+    }
+    return palettes.length > 0 ? palettes : defaultPalettes;
+}
+
 function renderSettings(viz) {
     if (currentSettingsRendered) return;
     const container = document.getElementById('settings-content');
@@ -393,6 +415,62 @@ function renderSettings(viz) {
 
                 input.addEventListener('change', (e) => {
                     window.currentConfig[opt.key] = e.target.checked;
+                    run();
+                });
+
+            } else if (opt.type === 'array' && opt.display === 'colors') {
+                const lbl = document.createElement('label');
+                lbl.textContent = opt.label || opt.key;
+                
+                const select = document.createElement('select');
+                select.id = `opt-${opt.key}`;
+                
+                const previewContainer = document.createElement('div');
+                previewContainer.style.display = 'flex';
+                previewContainer.style.gap = '4px';
+                previewContainer.style.marginTop = '6px';
+                
+                const palettes = getHarnessPalettes();
+
+                palettes.forEach((p, pIdx) => {
+                    const option = document.createElement('option');
+                    option.value = pIdx;
+                    option.textContent = p.label;
+                    select.appendChild(option);
+                });
+
+                let selectedIdx = 0;
+                if (Array.isArray(currentVal)) {
+                    const matchIdx = palettes.findIndex(p => JSON.stringify(p.colors) === JSON.stringify(currentVal));
+                    if (matchIdx !== -1) selectedIdx = matchIdx;
+                }
+
+                select.value = selectedIdx;
+
+                const updatePreview = (idx) => {
+                    previewContainer.innerHTML = '';
+                    const colors = palettes[idx].colors;
+                    colors.forEach(color => {
+                        const circle = document.createElement('div');
+                        circle.style.width = '14px';
+                        circle.style.height = '14px';
+                        circle.style.borderRadius = '50%';
+                        circle.style.backgroundColor = color;
+                        circle.style.border = '1px solid #dadce0';
+                        previewContainer.appendChild(circle);
+                    });
+                };
+
+                updatePreview(selectedIdx);
+
+                control.appendChild(lbl);
+                control.appendChild(select);
+                control.appendChild(previewContainer);
+
+                select.addEventListener('change', (e) => {
+                    const idx = parseInt(e.target.value, 10);
+                    window.currentConfig[opt.key] = palettes[idx].colors;
+                    updatePreview(idx);
                     run();
                 });
 
@@ -461,7 +539,11 @@ run = function () {
                 const el = document.getElementById(`opt-${key}`);
                 if (el) {
                     const val = window.currentConfig[key] !== undefined ? window.currentConfig[key] : (viz.options[key] && viz.options[key].default);
-                    if (el.type === 'checkbox') {
+                    if (viz.options[key] && viz.options[key].type === 'array' && viz.options[key].display === 'colors') {
+                        const palettes = getHarnessPalettes();
+                        const matchIdx = palettes.findIndex(p => JSON.stringify(p.colors) === JSON.stringify(val));
+                        el.value = matchIdx !== -1 ? matchIdx : 0;
+                    } else if (el.type === 'checkbox') {
                         el.checked = !!val;
                     } else {
                         el.value = val || '';
@@ -606,3 +688,19 @@ script.onerror = () => {
     showError(`Failed to load viz script: ${defaultVizFile}`);
 };
 document.body.appendChild(script);
+
+// Fetch instance Color Collections if available via CLI proxy
+fetch('/api/color-collections')
+    .then(res => {
+        if (!res.ok) throw new Error("Status " + res.status);
+        return res.json();
+    })
+    .then(data => {
+        console.log("Successfully loaded Looker instance color collections:", data);
+        window.lookerColorCollections = data;
+        currentSettingsRendered = false;
+        run();
+    })
+    .catch(err => {
+        console.warn("Looker instance color collections unavailable, using static fallback palettes. Detail:", err.message);
+    });

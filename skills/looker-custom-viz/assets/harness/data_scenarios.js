@@ -1002,12 +1002,14 @@ window.scenarios = {
           {
             "name": "orders.count",
             "label": "Orders Count",
-            "type": "number"
+            "type": "number",
+            "value_format": "#,##0"
           },
           {
             "name": "orders.total_amount",
             "label": "Total Sales",
-            "type": "number"
+            "type": "number",
+            "value_format": "0,##0.00"
           }
         ]
       }
@@ -1835,12 +1837,14 @@ window.scenarios = {
           {
             "name": "orders.count",
             "label": "Orders Count",
-            "type": "number"
+            "type": "number",
+            "value_format": "#,##0"
           },
           {
             "name": "orders.total_amount",
             "label": "Total Sales",
-            "type": "number"
+            "type": "number",
+            "value_format": "0,##0.00"
           }
         ]
       }
@@ -2823,12 +2827,14 @@ window.scenarios = {
           {
             "name": "orders.count",
             "label": "Orders Count",
-            "type": "number"
+            "type": "number",
+            "value_format": "#,##0"
           },
           {
             "name": "orders.total_amount",
             "label": "Total Sales",
-            "type": "number"
+            "type": "number",
+            "value_format": "0,##0.00"
           }
         ]
       }

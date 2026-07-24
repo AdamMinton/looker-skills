@@ -79,6 +79,10 @@ This method hosts the visualization code directly inside Looker's version-contro
       id: "my_custom_viz"
       label: "My Custom Chart"
       file: "dist/viz_bundle.js"
+      dependencies: [
+        "https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js",
+        "https://cdn.jsdelivr.net/npm/roughjs@4.6.6/bundled/rough.js"
+      ]
     }
     ```
 3.  **Push**: Commit the `dist/` directory and `manifest.lkml` to the repository. Switching to Dev Mode in Looker lets you immediately use the viz.
@@ -107,6 +111,7 @@ Serve the file locally over HTTPS.
 ## 4. Registry & Dev Mode Gotchas
 *   **ID Matching**: The `id` defined in the `manifest.lkml` project file (e.g. `id: "my_custom_viz"`) **must exactly match** the `id` string passed to `looker.plugins.visualizations.add({ id: 'my_custom_viz' })` inside your JavaScript code. If they do not match, the explore interface will load a blank visualization container.
 *   **Initial Production Footprint**: When registering a **new** custom visualization ID for the first time, Looker's registry will not display it in the Explore dropdowns under Development Mode until the project's manifest has been committed and deployed to production **at least once**. Once this initial manifest is pushed to production, subsequent code changes to the JS files inside your dev workspace are instantly hot-reloaded without further deploys.
+*   **Git Commit Step Required for Prod**: The Looker API has no endpoint to commit changes. Running `looker-cli project file update` only writes the changes to your Development Mode workspace. To push changes all the way to production, you must instruct the user to open the Looker IDE UI, click **Commit Changes & Push**, and then click **Deploy to Production** to merge the changes. Running `looker-cli project deploy` without this manual commit step will not deploy uncommitted changes.
 
 ---
 

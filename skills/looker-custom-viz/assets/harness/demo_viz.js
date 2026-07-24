@@ -1,27 +1,16 @@
 // /tmp/harness-demo/demo_viz.js
 
-const COLOR_COLLECTIONS = {
-  classic: ['#1a73e8', '#34a853', '#fbbc05', '#ea4335', '#4285f4', '#9334e6'],
-  sunset: ['#ff5a5f', '#ff7e5f', '#feb47b', '#ff7e5f', '#ff5a5f', '#ff7e5f'],
-  teal: ['#008080', '#20b2aa', '#3cb371', '#48d1cc', '#40e0d0', '#00ced1'],
-  monochrome: ['#4f5b66', '#65737e', '#8e9eab', '#a7adba', '#c0c5ce', '#dfe1e6']
-};
+
 
 looker.plugins.visualizations.add({
   id: 'demo_svg_bar_chart',
   label: 'Demo SVG Bar Chart',
   options: {
-    color_collection: {
-      type: 'string',
-      label: 'Color Collection',
-      default: 'classic',
-      display: 'select',
-      values: [
-        { 'Classic Blue': 'classic' },
-        { 'Sunset Orange': 'sunset' },
-        { 'Teal Breeze': 'teal' },
-        { 'Monochrome Gray': 'monochrome' }
-      ],
+    custom_color_palette: {
+      type: 'array',
+      label: 'Color Palette',
+      display: 'colors',
+      default: ['#1a73e8', '#34a853', '#fbbc05', '#ea4335'],
       section: 'Plot'
     },
     show_labels: {
@@ -134,7 +123,7 @@ looker.plugins.visualizations.add({
     }
 
     const showLabels = config.show_labels !== false;
-    const colors = COLOR_COLLECTIONS[config.color_collection] || COLOR_COLLECTIONS.classic;
+    const colors = config.custom_color_palette || ['#1a73e8', '#34a853', '#fbbc05', '#ea4335'];
 
     const width = container.clientWidth || 600;
     const height = container.clientHeight || 400;
