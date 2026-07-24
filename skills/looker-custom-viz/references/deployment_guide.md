@@ -29,6 +29,23 @@ You can dynamically import Looker data shapes into the harness UI:
 3.  Check **Save to data_scenarios.js permanently** and specify a name if you want to save it as a quick-select pill for future offline testing.
 4.  Click **Import**. The proxy server will fetch the query schema and results via your active CLI credentials and load them into the harness automatically.
 
+### Harness UI Reference & File Loading
+
+When developing a new visualization, do not place your code files inside the skill's directory. Instead, develop them in your active repository/project folder and load them into the harness UI:
+
+1.  **Loading Your Viz File**:
+    *   **Via URL Parameter**: Pass the absolute path to your file (from the workspace root) in the URL's `file` parameter. For example: `http://localhost:45873/skills/looker-custom-viz/assets/harness/builder.html?file=/pie_chart_viz.js`.
+    *   **Via UI input**: In the **VIZ SCRIPT** input field at the top of the harness UI, enter the absolute path to your script (e.g., `/pie_chart_viz.js`) or a relative path from the harness (e.g., `../../../../pie_chart_viz.js`), and click **Load**.
+2.  **Mock Data Tab**:
+    *   Click a **Scenario Pill** to load preset datasets.
+    *   Manually tweak the **Schema (Query Response)** JSON or **Dataset (Raw Rows)** JSON to test edge cases; changes will automatically re-render the preview (debounced by 500ms).
+3.  **Options Preview Tab**:
+    *   Once your script is loaded, the harness parses the `options` schema inside your code.
+    *   Adjust the generated toggles, select dropdowns, and text inputs to verify they pass configs to `updateAsync` and re-render properly.
+4.  **Preview Panel (Right Side)**:
+    *   Select **Visualization Preview** to view your SVG/Canvas output.
+    *   Select **Looker Table View** to verify cell values, drill links, and HTML formatting in a grid layout matching Looker's native explore table.
+
 ---
 
 ## 2. Code Validation and Minification
