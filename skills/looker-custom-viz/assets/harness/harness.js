@@ -288,8 +288,6 @@ function run() {
         const queryResponse = JSON.parse(queryArea.value);
         const config = window.currentConfig;
 
-        visContainer.innerHTML = '';
-
         const vizIds = Object.keys(looker.plugins.visualizations);
         if (vizIds.length === 0) {
             throw new Error("No visualizations registered.");
@@ -297,13 +295,17 @@ function run() {
         let vizId = vizIds.find(id => id === 'custom_pivot' || id === 'kpi_canvas' || id === 'demo_svg_bar_chart' || id === 'custom_pie_chart') || vizIds[vizIds.length - 1];
         const viz = looker.plugins.visualizations[vizId];
 
-        console.log("Creating viz:", vizId);
-
-        viz.create(visContainer, config, {
-            looker: window.looker
-        }, {
-            escape: x => x
-        });
+        if (window._currentActiveVizId !== vizId || visContainer.innerHTML.trim() === '' || !viz._hasCreatedInHarness) {
+            visContainer.innerHTML = '';
+            console.log("Creating viz:", vizId);
+            viz.create(visContainer, config, {
+                looker: window.looker
+            }, {
+                escape: x => x
+            });
+            viz._hasCreatedInHarness = true;
+            window._currentActiveVizId = vizId;
+        }
 
         viz.updateAsync(data, visContainer, config, queryResponse, {
             crossfilterEnabled: false
@@ -661,8 +663,8 @@ function renderTableCell(cell, fieldName, rowIndex, data, pivotKey = null) {
 }
 
 // Setup Viz Script Input and Loader
-const urlParams = new URLSearchParams(window.location.search);
-const defaultVizFile = urlParams.get('file') || 'demo_viz.js';
+const fileUrlParams = new URLSearchParams(window.location.search);
+const defaultVizFile = fileUrlParams.get('file') || 'demo_viz.js';
 
 const vizFileInput = document.getElementById('viz-file-input');
 if (vizFileInput) {

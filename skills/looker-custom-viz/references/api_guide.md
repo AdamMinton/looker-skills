@@ -21,6 +21,8 @@ The Visualization API is a state machine. You must handle transitions cleanly.
 *   **Error Clearing**: Always call `this.clearErrors()` at the very start.
 *   **Settled Animations**: If using animations, only call `done()` *after* they finish.
 *   **Responsive Resizing**: Do **NOT** hardcode layout dimensions in your visualization. Looker automatically triggers `updateAsync` when dashboard tiles or iframe windows are resized. You must read width and height dynamically from the parent DOM wrapper (e.g. `const width = element.clientWidth; const height = element.clientHeight;`) and pass them to your rendering layout or React components.
+*   **Defensive Canvas/DOM Management (ECharts / Chart.js)**: If `create()` is ever re-called or if DOM containers are replaced during hot reloads (`element.innerHTML`), stored chart instances (`this.chart`) will point to a detached DOM element. Always verify that `this.chart.getDom() === activeContainer` inside `updateAsync` before rendering; if detached, dispose `this.chart` and re-initialize.
+*   **`0x0` Canvas Guard**: If `container.clientWidth` or `container.clientHeight` are `0` when `echarts.init()` or `new Chart()` runs, the canvas initializes as `0x0` and remains blank. Always pass explicit fallback dimensions (e.g. `{ width: container.clientWidth || 600, height: container.clientHeight || 500 }`) to `echarts.init()` and `ResizeObserver`.
 
 ---
 

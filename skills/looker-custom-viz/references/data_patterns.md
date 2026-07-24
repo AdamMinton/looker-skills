@@ -289,3 +289,39 @@ function getFormatterForMeasure(data, measure, measureName) {
   };
 }
 ```
+
+---
+
+## 9. Dynamic Option Registration (`registerOptions`)
+
+When a visualization requires dynamic user options based on the active query schema (e.g. allowing users to select which measure from `queryResponse.fields.measures` sizes the slices in a Sunburst or Treemap), you can register updated options inside `updateAsync`.
+
+### The Pattern
+Always check if `typeof this.trigger === 'function'` before calling `this.trigger('registerOptions', options)` so the code runs safely across both live Looker instances and the local offline harness:
+
+```javascript
+// Build select options from available measures
+const measureValues = (queryResponse.fields.measures || []).map(m => {
+  const obj = {};
+  obj[m.label_short || m.label || m.name] = m.name;
+  return obj;
+});
+
+const dynamicOptions = Object.assign({}, this.options);
+dynamicOptions.size_by_measure = {
+  type: 'string',
+  label: 'Size by Measure',
+  display: 'select',
+  values: measureValues,
+  default: queryResponse.fields.measures[0] ? queryResponse.fields.measures[0].name : '',
+  section: 'Data'
+};
+
+if (typeof this.trigger === 'function') {
+  this.trigger('registerOptions', dynamicOptions);
+} else {
+  this.options = dynamicOptions;
+  if (window.refreshSettingsPanel) window.refreshSettingsPanel(this);
+}
+```
+

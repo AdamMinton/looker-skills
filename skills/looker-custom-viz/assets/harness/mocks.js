@@ -21,6 +21,15 @@ window.looker = {
             errorOverlay.style.backgroundColor = '#ea4335'; // Red banner
           }
         };
+        viz.trigger = function (event, args) {
+          console.log(`Viz Event: ${event}`, args);
+          if (event === 'registerOptions') {
+            viz.options = args;
+            if (window.refreshSettingsPanel) {
+              window.refreshSettingsPanel(viz);
+            }
+          }
+        };
         this[viz.id] = viz;
         // Make it available as currentViz for legacy harness support if needed
         window.currentViz = viz;

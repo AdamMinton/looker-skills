@@ -14,6 +14,8 @@ Because Looker custom visualizations render inside client-side browser iframes, 
 *   **💻 Developer Persona**:
     *   **Architecture & Performance**: Supports Canvas, SVG, and GPU-accelerated WebGL rendering. Natively handles datasets containing millions of points. Excellent mobile responsiveness.
     *   **Looker Integration**: Highly compatible. Renders cleanly inside Looker's sandboxed iframes. Since it is declarative, you can easily map Looker's configuration panel options to ECharts config objects.
+        *   *Lifecycle & DOM Guard*: If `create()` runs multiple times, check `if (this.chart && this.chart.getDom() !== container) { this.chart.dispose(); }` before `echarts.init()` to avoid drawing to a detached canvas.
+        *   *`0x0` Canvas Fallback*: Pass explicit fallback dimensions (`{ width: container.clientWidth || 600, height: container.clientHeight || 500 }`) to `echarts.init()` so early layout delays do not produce a blank `0x0` chart.
     *   **Bundle Size**: Heavy (~300KB gzipped). Not ideal for ultra-lightweight pages, but perfect for full-featured Looker analytical dashboards.
     *   **Security (CSP)**: Safe and secure; does not require `eval()` or inline scripts if loaded via bundle or static CDN.
 *   **📊 Analyst Persona**:
