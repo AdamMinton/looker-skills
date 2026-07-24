@@ -56,14 +56,73 @@ function onCellClick(event, cell) {
 Always guard against empty results.
 
 ```javascript
+// Step 1: Inject Looker host fonts inside create() dynamically
+create: function(element, config) {
+  let parentOrigin = window.location.origin;
+  try {
+    if (document.referrer) {
+      parentOrigin = new URL(document.referrer).origin;
+    }
+  } catch (e) {}
+
+  if (!document.getElementById('looker-native-fonts')) {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'looker-native-fonts';
+    styleEl.innerHTML = `
+      @font-face {
+        font-family: 'Google Sans';
+        font-weight: 400;
+        font-style: normal;
+        src: url('${parentOrigin}/fonts/vendor/google-sans/GoogleSans-Regular-cb71e97c92.woff') format('woff');
+      }
+      @font-face {
+        font-family: 'Google Sans';
+        font-weight: 500;
+        font-style: normal;
+        src: url('${parentOrigin}/fonts/vendor/google-sans/GoogleSans-Medium-36c5aa25bb.woff') format('woff');
+      }
+    `;
+    document.head.appendChild(styleEl);
+  }
+  // ...
+}
+
+// Step 2: Handle empty dataset check
 if (!data || data.length === 0) {
-    this.addError({
-        title: "No Data",
-        message: "The query returned no results."
-    });
+    container.innerHTML = `
+      <div style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        font-family: 'Google Sans', sans-serif;
+        gap: 6px;
+      ">
+        <div style="width: 24px; height: 24px; color: rgb(140, 140, 140); display: flex; align-items: center; justify-content: center;">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width: 24px; height: 24px;">
+            <path fill="none" d="M0 0h24v24H0V0z"></path>
+            <path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>
+          </svg>
+        </div>
+        <span style="
+          box-sizing: border-box;
+          margin: 0px;
+          padding: 0px;
+          font-size: 1rem;
+          font-weight: 500;
+          line-height: 1.5rem;
+          text-align: center;
+          color: rgb(38, 45, 51);
+        ">No results</span>
+      </div>
+    `;
+    if (done) done();
     return;
 }
 ```
+
+For the exact native CSS specs and dynamically resolved fonts, refer to the [references/styling_guide.md](file://./styling_guide.md).
 
 ## 4. Coloring
 
@@ -95,4 +154,43 @@ data.forEach(row => {
         console.log(cell.value); 
     });
 });
+```
+
+---
+
+## 6. Query Shape & Field Validation
+
+Visualizations are designed for specific data structures (e.g., a pie chart needs exactly 1 dimension and 1 measure; a scatter plot needs at least 2 measures). You must validate the query shape at the start of `updateAsync` to prevent the visualization from crashing.
+
+### The Validation Pattern
+1.  **Extract Fields**: Grab the lists of active dimensions and measures.
+2.  **Verify Constraints**: Count them and compare against your requirements.
+3.  **Display Error**: If invalid, call `this.addError(...)` and halt execution.
+4.  **Signal Completion**: **Always call `done()`** even if you display an error, so Looker's rendering supervisor knows the iframe is finished and won't hang scheduler processes.
+
+```javascript
+updateAsync: function(data, element, config, queryResponse, details, done) {
+  // 1. Clear any previous errors
+  this.clearErrors();
+
+  const dimensions = queryResponse.fields.dimensions || [];
+  const measures = queryResponse.fields.measures || [];
+
+  // 2. Enforce shape validation rules (e.g., requires at least 1 dim and 1 measure)
+  if (dimensions.length < 1 || measures.length < 1) {
+    element.innerHTML = ''; // Clear container
+    
+    this.addError({
+      group: "query_shape",
+      title: "Incompatible Query Shape",
+      message: "This visualization requires at least 1 dimension and 1 measure to render."
+    });
+    
+    // 3. Always finalize execution
+    done();
+    return;
+  }
+
+  // ... Proceed with normal chart rendering ...
+}
 ```
