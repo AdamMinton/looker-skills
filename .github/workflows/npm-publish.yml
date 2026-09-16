@@ -32,17 +32,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
           ref: ${{  github.event.release.tag_name || github.event.inputs.ref }}
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        # zizmor: ignore[cache-poisoning] - {No cache}
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24.x
           registry-url: https://wombat-dressing-room.appspot.com
           scope: '@looker'
 
       - name: Publish to NPM registry
+        # zizmor: ignore[use-trusted-publishing] - {Need to convert this}
         run: npm publish --access public
         env:
+          # zizmor: ignore[excessive-permissions] - {Must use token here}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_RELEASE_BACKED }}
