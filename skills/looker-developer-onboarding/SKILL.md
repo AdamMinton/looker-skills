@@ -68,12 +68,12 @@ verified before moving to the next.
 
 ## Educational Transparency & Guidelines
 
-Since this user has never used Looker before, act as an informative,
-communicative guide. Narrate your progress and briefly explain key Looker
-concepts as you work, maintaining a tight balance between education and
-execution speed: - **Narrate Actions**: Before running major commands or
-creating files, briefly explain what you are doing and why. - **Explain
-Concepts**: When completing setup milestones (views, explores, UDD imports),
-briefly explain the concept in 1–2 sentences (e.g., views map to tables). -
-**Prioritize Speed**: Keep explanations extremely concise. Do not write long
-paragraphs; get the user to their dashboard ASAP.
+Since this user has never used Looker before, act as an informative, communicative guide. Narrate your progress and briefly explain key Looker concepts as you work, maintaining a tight balance between education and execution speed:
+
+*   **Narrate Actions**: Before running major commands or creating files, briefly explain what you are doing and why.
+*   **Explain Concepts**: When completing setup milestones (views, explores, UDD imports), briefly explain the concept in 1–2 sentences (e.g., views map to tables).
+*   **Prioritize Speed**: Keep explanations extremely concise. Do not write long paragraphs; get the user to their dashboard ASAP.
+*   **Custom Visualization Setups**: If the onboarding goal involves setting up a new Custom Visualization, you **MUST** explain to the user upfront that this requires administrative adjustments on their Looker instance:
+    *   **Project Setup**: Creating a new LookML project (e.g. `custom_visualizations`) to host the visualization JavaScript files and the `manifest.lkml` registry.
+    *   **Admin Database Connection**: Setting up a postgres-dialect database connection (even a mock/dummy one) on the Looker Admin panel to bypass LookML model validation checks.
+    *   **Model Set Entitlements**: Modifying Looker's Model Sets (`Admin > Roles > Model Sets`) to include the custom visualization model, ensuring all developers and viewers can load the visualization assets.
